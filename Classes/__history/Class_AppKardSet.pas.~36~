@@ -1,0 +1,243 @@
+{*******************************************************************************
+* Class_AppKardSet.pas-Класс сохранения и восстановления настроек программы    *
+*                                                                              *
+* Программа <ClientKARD>-Программный Комплекс (ПК) БД КАРД                     *
+*                                                                              *
+* Разработчик - Сазонов Михаил Владимирович - ведущий инженер                  *
+*     Контакты >> 32-14| E-Mail:mikhail.sazonov@niitp.ru                       *
+*     Copyright (C)АО НИИ Точных Приборов - Март 2024                          *
+*     Модуль создан: 28.03.2024 12:08:07                                       *
+*******************************************************************************}
+
+unit Class_AppKardSet;
+
+interface
+
+uses Winapi.Windows, Controls, Classes;
+
+type
+
+
+
+{ TAppKardSet }
+ TAppKardSet = class(TObject)
+    private //поля класса
+     fPathProg      : string; //полный путь к программе
+     fPathLog       : string; //полный путь к КАТОЛОГУ  LOG
+     fPathSett      : string; //полный путь к КАТОЛОГУ SETTING
+     fPathHelp      : string; //полный путь к КАТОЛОГУ Help
+     fPathTemp      : string; //полный путь к КАТОЛОГУ TEMP
+     fPathRprt      : string; //полный путь к КАТОЛОГУ TEMP
+
+     fhAppl         : HWND;   //дескриптор формы
+
+    private //чтение полей класса
+      function Get_PathProg       : string; virtual; //полный путь к программе
+      function Get_PathLog        : string; virtual; //полный путь к КАТОЛОГУ  LOG
+      function Get_PathSett       : string; virtual; //полный путь к КАТОЛОГУ SETTING
+      function Get_PathHelp       : string; virtual; //полный путь к КАТОЛОГУ Help
+      function Get_PathTemp       : string; virtual; //полный путь к КАТОЛОГУ TEMP
+
+      function Get_hAppl          : HWND  ; virtual; //дескриптор формы
+
+    private //запись полей класса
+      procedure Set_PathProg    (Value: string); virtual; //полный путь к программе
+      procedure Set_PathLog     (Value: string); virtual; //полный путь к КАТОЛОГУ  LOG
+      procedure Set_PathSett    (Value: string); virtual; //полный путь к КАТОЛОГУ SETTING
+      procedure Set_PathHelp    (Value: string); virtual; //полный путь к КАТОЛОГУ Help
+      procedure Set_PathTemp    (Value: string); virtual; //полный путь к КАТОЛОГУ TEMP
+
+      procedure Set_hAppl        (Value: HWND);   virtual;
+
+    protected
+
+    public
+    constructor Create; overload;
+    constructor Create(LogDir, SetDir, TmpDir, HlpDir, ReportDir: string); overload;
+    destructor  Destroy;  override;
+
+//    published //свойства класса-для компонентов
+
+    //чтение\запись полей класса
+    property PathProg: string read Get_PathProg  write Set_PathProg;
+    property PathLog : string read Get_PathLog   write Set_PathLog;
+    property PathSett: string read Get_PathSett  write Set_PathSett;
+    property PathHelp: string read Get_PathHelp  write Set_PathHelp;
+    property PathTemp: string read Get_PathTemp  write Set_PathTemp;
+
+    property hAppl: HWND read Get_hAppl  write Set_hAppl;
+
+    {++++++++++++++++++ МЕТОДЫ КЛАССА +++++++++++++++++++++++++++++++++++++++++++++}
+    //читаем ИД класса
+    function LoadFromIniFile(const fIniName:string): TAppKardSet;
+    //сохранение ИД класса
+    function SaveInIniFile(const fIniName: string; const Нет: TAppKardSet): Boolean;
+    //присвоение полей одного класса другому, однотипному
+    procedure Assign(Source: TAppKardSet);
+
+    //сравнение полей одного класса другому, однотипному
+    //Если OldPrm = NewOpm тогда FALSE, OldPrm <> NewOpm тогда TRUE
+    function ComparePrm(OldPrm: TAppKardSet): Boolean;
+
+    end;
+
+
+implementation
+
+uses
+      SysUtils, IniFiles,
+      ResStr_ForClass, ResStr_ClientKard, ResStr_GlobalResurs
+      ;
+
+
+{ TAppKardSet }
+
+constructor TAppKardSet.Create;
+begin
+ fPathProg      := ''; //полный путь к программе
+ fPathLog       := ''; //полный путь к КАТОЛОГУ  LOG
+ fPathSett      := ''; //полный путь к КАТОЛОГУ SETTING
+ fPathTemp      := ''; //полный путь к КАТОЛОГУ TEMP
+ Self.Set_PathProg('');
+ Self.Set_PathLog(fPathProg);
+ fhAppl         := 0;  //дескриптор формы
+end;
+
+constructor TAppKardSet.Create(LogDir, SetDir, TmpDir, HlpDir,
+                                ReportDir: string);
+begin
+ fPathProg      := ''; //полный путь к программе
+ fPathLog       := ''; //полный путь к КАТОЛОГУ  LOG
+ fPathSett      := ''; //полный путь к КАТОЛОГУ SETTING
+ fPathTemp      := ''; //полный путь к КАТОЛОГУ TEMP
+end;
+
+destructor TAppKardSet.Destroy;
+begin
+
+  inherited;
+end;
+
+procedure TAppKardSet.Assign(Source: TAppKardSet);
+begin //присвоение полей одного класса другому, однотипному
+ if Source is TAppKardSet then
+   begin
+     PathProg       := (Source as TAppKardSet).PathProg;  //полный путь к программе
+     PathLog        := (Source as TAppKardSet).PathLog;   //полный путь к КАТОЛОГУ  LOG
+     PathSett       := (Source as TAppKardSet).PathSett;  //полный путь к КАТОЛОГУ SETTING
+     PathTemp       := (Source as TAppKardSet).PathTemp;  //полный путь к КАТОЛОГУ TEMP
+     hAppl          := (Source as TAppKardSet).hAppl;     //дескриптор формы
+   end
+   else
+   Exception.Create(ErrClssCopy);
+
+end;
+
+function TAppKardSet.ComparePrm(OldPrm: TAppKardSet): Boolean;
+begin
+ if (OldPrm.PathProg <> Self.PathProg) or //полный путь к программе
+    (OldPrm.PathLog  <> Self.PathLog)  or //полный путь к КАТОЛОГУ  LOG
+    (OldPrm.PathSett <> Self.PathSett) or //полный путь к КАТОЛОГУ SETTING
+    (OldPrm.PathTemp <> Self.PathTemp) or //полный путь к КАТОЛОГУ TEMP
+    (OldPrm.hAppl    <> Self.hAppl)       //дескриптор формы
+    then
+        Result:= True  //ИД изменились
+   else
+     Result:= False;  //ИД не изменились
+//Если OldPrm = NewPrm тогда FALSE, OldPrm <> NewPrm тогда TRUE
+end;
+
+(*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  + чтение полей класса                                                       +
+  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*)
+
+function TAppKardSet.Get_hAppl: HWND;
+begin
+ Result := fhAppl;
+end;
+
+function TAppKardSet.Get_PathHelp: string;
+begin
+ Result := fPathHelp;
+end;
+
+function TAppKardSet.Get_PathLog: string;
+begin
+ Result := fPathLog;
+end;
+
+function TAppKardSet.Get_PathProg: string;
+begin
+ Result := fPathProg;
+end;
+
+function TAppKardSet.Get_PathSett: string;
+begin
+ Result := fPathSett;
+end;
+
+function TAppKardSet.Get_PathTemp: string;
+begin
+ Result := fPathTemp;
+end;
+
+function TAppKardSet.LoadFromIniFile(const fIniName: string): TAppKardSet;
+begin
+
+end;
+
+function TAppKardSet.SaveInIniFile(const fIniName: string;
+  const Нет: TAppKardSet): Boolean;
+begin
+
+end;
+
+procedure TAppKardSet.Set_hAppl(Value: HWND);
+begin
+ fhAppl := Value;
+end;
+
+procedure TAppKardSet.Set_PathLog(Value: string);
+begin
+ if Value <> '' then
+      fPathLog := Value
+   else
+ fPathLog := IncludeTrailingPathDelimiter(PathProg + DirLog);//полный путь КАТОЛОГА  LOG
+end;
+
+procedure TAppKardSet.Set_PathProg(Value: string);
+begin //полный путь к программе
+ if Value <> '' then
+      fPathProg := Value
+   else
+   fPathProg := IncludeTrailingPathDelimiter(ExtractFilePath(//путь к программе
+                                                     GetModuleName(HInstance)));
+end;
+
+procedure TAppKardSet.Set_PathSett(Value: string);
+begin
+ if Value <> '' then
+    fPathSett := Value
+    else
+    fPathSett := IncludeTrailingPathDelimiter(fPathProg + DirSett);//полный путь КАТОЛОГА SETTING
+end;
+
+procedure TAppKardSet.Set_PathHelp(Value: string);
+begin
+ if Value <> '' then
+    fPathHelp := Value
+    else
+    fPathHelp := IncludeTrailingPathDelimiter(fPathProg + DirHlp);//полный путь КАТОЛОГА TEMP;
+end;
+
+procedure TAppKardSet.Set_PathTemp(Value: string);
+begin
+ if Value <> '' then
+    fPathTemp := Value
+    else
+    fPathTemp := IncludeTrailingPathDelimiter(fPathProg + DirTmp);//полный путь КАТОЛОГА TEMP;
+end;
+
+end.
+
+

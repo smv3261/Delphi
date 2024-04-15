@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>1899.12.30 00:00:00.000.281,H:\Embarcadero\MyProjects\Project_Dx\Test_Dx\TestFormSetting\Unit2.pas=H:\Embarcadero\MyProjects\Project_Dx\Test_Dx\TestFormSetting\FormsPrj\MonitorForm\FormMonitor.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.790,=H:\Embarcadero\MyProjects\Project_Dx\Test_Dx\TestFormSetting\Unit2.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.167,=H:\Embarcadero\MyProjects\Project_Dx\Test_Dx\TestFormSetting\Resource_String\ResStr_ClientKard.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.197,H:\Embarcadero\MyProjects\Project_Dx\Test_Dx\TestFormSetting\MainForm.pas=H:\Embarcadero\MyProjects\Unit1.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.281,H:\Embarcadero\MyProjects\Project_Dx\Test_Dx\TestFormSetting\Unit2.dfm=H:\Embarcadero\MyProjects\Project_Dx\Test_Dx\TestFormSetting\FormsPrj\MonitorForm\FormMonitor.dfm</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.618,=H:\Embarcadero\MyProjects\Project_Dx\Test_Dx\TestFormSetting\Classes\Class_AppKardSet.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.914,=H:\Embarcadero\MyProjects\Project_Dx\Test_Dx\TestFormSetting\Classes\Class_SetProg.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.305,=H:\Embarcadero\MyProjects\Unit1.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.197,H:\Embarcadero\MyProjects\Project_Dx\Test_Dx\TestFormSetting\MainForm.dfm=H:\Embarcadero\MyProjects\Unit1.dfm</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.736,=H:\Embarcadero\MyProjects\Project_Dx\Test_Dx\TestFormSetting\Resource_String\ResStr_ForClass.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.779,H:\Embarcadero\MyProjects\Project_Dx\Test_Dx\TestFormSetting\SettingForm1.dproj=H:\Embarcadero\MyProjects\Project1.dproj</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.384,=H:\Embarcadero\MyProjects\Project_Dx\Test_Dx\TestFormSetting\Resource_String\ResStr_GlobalResurs.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.205,=H:\Embarcadero\MyProjects\Unit1.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.519,=H:\Embarcadero\MyProjects\Unit1.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.170,=H:\Embarcadero\MyProjects\Unit1.pas</Transaction>
+  </Transactions>
+</BorlandProject>

@@ -1,0 +1,953 @@
+{*******************************************************************************
+* Class_SetProg.pas-Класс сохранения и восстановления настроек программы       *
+*                                                                              *
+* Программа <SettingForm1>-Программный Комплекс (ПК) БД КАРД                   *
+*                                                                              *
+* Разработчик - Сазонов Михаил Владимирович - ведущий инженер                  *
+*     Контакты >> 32-14| E-Mail:mikhail.sazonov@niitp.ru                       *
+*     Copyright (C)АО НИИ Точных Приборов - Апрель 2024                        *
+*     Модуль создан: 10.04.2024 11:01:36                                       *
+*******************************************************************************}
+
+unit Class_SetProg;
+
+interface
+
+uses IniFiles;
+
+const
+//     cUNC: Set of Char = ['\', '/'];//признак сетевого пути
+     MAX_Frozen   = 100;//МАХ число замороженных первых колонок сеток <= 100
+     MAX_LogLevel = 3;  //МАХ число уровней логирования начиная с 1
+     DefDelay     = 15; //время задержки сканирования TSK_INP в [СЕК] по УМОЛЧАНИЮ
+     MaxDelay     = 150;//MAX время задержки сканирования TSK_INP в [СЕК]
+     MaxFileSize  = 10000;//МАХ размер файлов при операциях записи/копировании 
+     
+resourcestring
+     
+{+++++++++++ Имена файлов хранения настроек +++++++++++++++++++++++++++++++++++}
+ iSetNew  = 'SetProg.INI';     //имя INI файла новых настроек SetProg
+ iSetOld  = 'SetProgOld.INI';  //имя INI файла старых настроек SetProg
+ 
+ AppSmess = 'SMES-XP V.3.5';   //имя окна программы SMES_XP
+
+type
+  //сообщение об изменении настроек программы
+//  TMsgChngPrg= procedure(Sender: TObject; Prm: Integer) of object;
+
+{ TSetProg }
+
+  TSetProg = class(TObject)//Настройки программы и диалогов
+   private
+    fAPageIndex     : Integer;//активная закладка
+    fLogLevel       : Integer;//Уровень логирования сообщений
+    fLogOnOff       : Boolean;//протокол в файл вкл/выкл.
+    fMnMzOnOff      : Boolean;//признак минимизации в трэй
+    fShowErr        : Boolean;//Показывать ошибки Автоматически
+    fAutoDelLog     : Boolean;//включение автомат. удаление ЛОГ-файлы
+    fAutoDelArh     : Boolean;//включение автомат. удаление Архивных файлов команд 
+    fRewriteLog     : Boolean;//Разрешить перезапись LOG-файла
+    fAutoStartMon   : Boolean;//Разрешить Автоматический запуск монитора каталога
+    fDelayInp       : Integer;//время задержки сканирования TSK_INP в [СЕК]
+    fOldLogDay      : Integer;//хранить ЛОГ-файлы столько дней
+    fOldArhDay      : Integer;//хранить Архивные файлы команд столько дней
+    fSizeMax        : Integer;//МАХ размер файлов при операциях записи/копировании
+    fDirProg        : string; //полное имя каталога программы
+    fCommandDir     : string; //полное имя общего каталога для INPUT|WORK|OUT
+    fDirInp         : string; //полное имя приемного каталога
+    fDirWork        : string; //полное имя рабочего каталога
+    fDirOut         : string; //полное имя выходного каталога
+    fDirExprt       : string; //полное имя каталога для экспорта
+    fDirArchivCmd   : string; //полное имя каталога архива команд
+    fDirExprtNet    : string; //сетевое имя каталога экспорта
+    fDirReport      : string; //полное имя каталога Report 
+    fNameModul      : string; //полное имя загружаемого модуля
+    fVersion        : string; //версия файла
+    fNameFileLog    : string; //полное имя ЛОГ-файла
+    fNameFileReport : string; //полное имя файла ОТЧЕТА
+    fAppFullName    : string; //Полное Имя файла e:\...Viewer\Smes_XP.exe
+    fAppWndCapt     : string; //Имя заголовка окна Smes_XP (SMES-XP V.3.5)
+    fAppProcName    : string; //Имя процесса окна Smes_XP
+    fAppAutoClose   : Boolean;//Автоматически закрывать приложение, при выходе из основной программы
+    fLstOnOff       : Boolean;//вывод листинга ИД в блокнот
+    
+   private//чтение значений полей - закрытые методы класса
+    function Get_APageIndex  : Integer; virtual;//активная закладка
+    function Get_LogLevel    : Integer; virtual;//Уровень логирования сообщений
+    function Get_LogOnOff    : Boolean; virtual;//протокол в файл вкл/выкл.
+    function Get_MnMzOnOff   : Boolean; virtual;//признак минимизации в трэй
+    function Get_ShowErr     : Boolean; virtual;//Показывать ошибки Автоматически
+    function Get_AutoDelLog  : Boolean; virtual;//включение автомат. удаление ЛОГ-файлы
+    function Get_AutoDelArh  : Boolean; virtual;//включение автомат. удаление Архивных файлов команд 
+    function Get_RewriteLog  : Boolean; virtual;//Разрешить перезапись LOG-файла
+    function Get_AutoStartMon: Boolean; virtual;//Разрешить Автоматический запуск монитора каталога
+    function Get_DelayInp    : Integer; virtual;//время задержки сканирования TSK_INP в [СЕК]
+    function Get_OldArhDay   : Integer; virtual;//хранить Архивные файлы команд столько дней
+    function Get_OldLogDay   : Integer; virtual;//хранить ЛОГ-файлы столько дней
+    function Get_FileSizeMax : Integer; virtual;//МАХ размер файлов при операциях записи/копировании
+    function Get_DirProg     : string;  virtual;//полное имя каталога программы
+    function Get_CommandDir  : string;  virtual;//полное имя общего каталога для INPUT|WORK|OUT
+    function Get_DirInp      : string;  virtual;//полное имя приемного каталога
+    function Get_DirWork     : string;  virtual;//полное имя рабочего каталога
+    function Get_DirOut      : string;  virtual;//полное имя выходного каталога
+    function Get_DirExprt    : string;  virtual;//полное имя каталога для экспорта
+    function Get_DirReport   : string;  virtual;//полное имя каталога Report
+    function Get_DirArchivCmd: string;  virtual;//полное имя каталога архива команд
+    function Get_DirExprtNet : string;  virtual;//сетевое имя каталога экспорта
+    function Get_NameModul   : string;  virtual;//полное имя загружаемого модуля
+    function Get_Version     : string;  virtual;//версия файла
+    function Get_NameLog     : string;  virtual;//полное имя ЛОГ-файла
+    function Get_NameReport  : string;  virtual;//полное имя файла ОТЧЕТА
+    function Get_AppFullName : string;  virtual;//Полное Имя файла e:\...Viewer\Smes_XP.exe
+    function Get_AppWndCapt  : string;  virtual;//Имя заголовка окна Smes_XP (SMES-XP V.3.5)
+    function Get_AppProcName : string;  virtual;//Имя процесса окна Smes_XP
+    function Get_AppAutoClose: Boolean; virtual;//Автоматически закрывать приложение, при выходе из основной программы
+    function Get_LstOnOff    : Boolean; virtual;//вывод листинга ИД в блокнот
+    
+   private//установка значений полей - закрытые методы класса 
+    procedure Set_APageIndex  (Value: Integer); virtual;//активная закладка
+    procedure Set_LogLevel    (Value: Integer); virtual;//Уровень логирования сообщений
+    procedure Set_LogOnOff    (Value: Boolean); virtual;//протокол в файл вкл/выкл.
+    procedure Set_MnMzOnOff   (Value: Boolean); virtual;//признак минимизации в трэй
+    procedure Set_ShowErr     (Value: Boolean); virtual;//Показывать ошибки Автоматически
+    procedure Set_AutoDelArh  (Value: Boolean); virtual;//включение автомат. удаление Архивных файлов команд 
+    procedure Set_AutoDelLog  (Value: Boolean); virtual;//включение автомат. удаление ЛОГ-файлы
+    procedure Set_RewriteLog  (Value: Boolean); virtual;//Разрешить перезапись LOG-файла
+    procedure Set_AutoStartMon(Value: Boolean); virtual;//Разрешить Автоматический запуск монитора каталога
+    procedure Set_DelayInp    (Value: Integer); virtual;//время задержки сканирования TSK_INP в [СЕК]
+    procedure Set_OldArhDay   (Value: Integer); virtual;//хранить Архивные файлы команд столько дней
+    procedure Set_OldLogDay   (Value: Integer); virtual;//хранить ЛОГ-файлы столько дней
+    procedure Set_FileSizeMax (Value: Integer); virtual;//МАХ размер файлов при операциях записи/копировании
+    procedure Set_DirProg     (Value: string); virtual; //полное имя каталога программы
+    procedure Set_CommandDir  (Value: string); virtual; //полное имя общего каталога для INPUT|WORK|OUT
+    procedure Set_DirInp      (Value: string); virtual; //полное имя приемного каталога
+    procedure Set_DirWork     (Value: string); virtual; //полное имя рабочего каталога
+    procedure Set_DirOut      (Value: string); virtual; //полное имя выходного каталога
+    procedure Set_DirExprt    (Value: string); virtual; //полное имя каталога для экспорта
+    procedure Set_DirReport   (Value: string); virtual; //полное имя каталога Report
+    procedure Set_DirArchivCmd(Value: string); virtual; //полное имя каталога архива команд 
+    procedure Set_DirExprtNet (Value: string); virtual; //сетевое имя каталога экспорта
+    procedure Set_NameModul   (Value: string); virtual; //полное имя загружаемого модуля
+    procedure Set_Version     (Value: string); virtual; //версия файла
+    procedure Set_NameLog     (Value: string); virtual; //полное имя ЛОГ-файла
+    procedure Set_NameReport  (Value: string); virtual; //полное имя файла ОТЧЕТА
+    procedure Set_AppFullName (Value: string); virtual; //Полное Имя файла e:\...Viewer\Smes_XP.exe
+    procedure Set_AppWndCapt  (Value: string); virtual; //Имя заголовка окна Smes_XP (SMES-XP V.3.5)
+    procedure Set_AppProcName (Value: string); virtual; //Имя процесса окна Smes_XP
+    procedure Set_AppAutoClose(Value: Boolean); virtual;//Автоматически закрывать приложение, при выходе из основной программы
+    procedure Set_LstOnOff    (Value: Boolean); virtual;//вывод листинга ИД в блокнот
+    
+   public
+    //если fIniName:= '' тогда грузим по умолчанию, иначе из файла
+    constructor Create;
+    destructor Destroy; override;
+
+    property APageIndex  : Integer read Get_APageIndex   write Set_APageIndex; //активная закладка
+    property LogLevel    : Integer read Get_LogLevel     write Set_LogLevel;   //Уровень логирования сообщений
+    property LogOnOff    : Boolean read Get_LogOnOff     write Set_LogOnOff;   //протокол в файл вкл/выкл.
+    property MnMzOnOff   : Boolean read Get_MnMzOnOff    write Set_MnMzOnOff;  //признак минимизации в трэй
+    property ShowErr     : Boolean read Get_ShowErr      write Set_ShowErr;    //Показывать ошибки Автоматически
+    property AutoDelArh  : Boolean read Get_AutoDelArh   write Set_AutoDelArh; //включение автомат. удаление Архивных файлов команд 
+    property AutoDelLog  : Boolean read Get_AutoDelLog   write Set_AutoDelLog; //включение автомат. удаление ЛОГ-файлы
+    property RewriteLog  : Boolean read Get_RewriteLog   write Set_RewriteLog; //Разрешить перезапись LOG-файла
+    property AutoStartMon: Boolean read Get_AutoStartMon write Set_AutoStartMon;//Разрешить Автоматический запуск монитора каталога
+    property DelayInp    : Integer read Get_DelayInp     write Set_DelayInp;   //время задержки сканирования TSK_INP в [СЕК]
+    property OldArhDay   : Integer read Get_OldArhDay    write Set_OldArhDay;  //хранить Архивные файлы команд столько дней
+    property OldLogDay   : Integer read Get_OldLogDay    write Set_OldLogDay;  //хранить ЛОГ-файлы столько дней
+    property FileSizeMax : Integer read Get_FileSizeMax  write Set_FileSizeMax;//МАХ размер файлов при операциях записи/копировании
+    property DirProg     : string  read Get_DirProg      write Set_DirProg;    //полное имя каталога программы
+    property CommandDir  : string  read Get_CommandDir   write Set_CommandDir; //полное имя общего каталога для INPUT|WORK|OUT
+    property DirInp      : string  read Get_DirInp       write Set_DirInp;     //полное имя приемного каталога
+    property DirWork     : string  read Get_DirWork      write Set_DirWork;    //полное имя рабочего каталога
+    property DirOut      : string  read Get_DirOut       write Set_DirOut;     //полное имя выходного каталога
+    property DirExprt    : string  read Get_DirExprt     write Set_DirExprt;   //полное имя каталога для экспорта
+    property DirReport   : string  read Get_DirReport    write Set_DirReport;  //полное имя каталога Report
+    property DirArchivCmd: string  read Get_DirArchivCmd write Set_DirArchivCmd;//полное имя каталога архива команд
+    property DirExprtNet : string  read Get_DirExprtNet  write Set_DirExprtNet;//сетевое имя каталога экспорта
+    property NameModul   : string  read Get_NameModul    write Set_NameModul;  //полное имя загружаемого модуля
+    property VersFile    : string  read Get_Version      write Set_Version;    //версия файла
+    property NameLog     : string  read Get_NameLog      write Set_NameLog;    //полное имя ЛОГ0-файла
+    property NameReport  : string  read Get_NameReport   write Set_NameReport; //полное имя файла ОТЧЕТА
+    property AppFullName : string  read Get_AppFullName  write Set_AppFullName;//Полное Имя файла e:\...Viewer\Smes_XP.exe
+    property AppWndCapt  : string  read Get_AppWndCapt   write Set_AppWndCapt; //Имя заголовка окна Smes_XP (SMES-XP V.3.5)
+    property AppProcName : string  read Get_AppProcName  write Set_AppProcName;//Имя процесса окна Smes_XP
+    property AppAutoClose: Boolean read Get_AppAutoClose write Set_AppAutoClose;//Автоматически закрывать приложение, при выходе из основной программы
+    property LstOnOff    : Boolean read Get_LstOnOff     write Set_LstOnOff;   //вывод листинга ИД в блокнот
+
+    //читаем настройки программы
+    function LoadFromIniFile(const fIniName:string): TSetProg;
+    //сохранение настроек программы
+    function SaveInIniFile(const fIniName:string): Boolean;
+
+    //удаление старых ЛОГ-файлов и архивных файлов команд
+    function DeleteOldFile(const PathScan, //каталог сканирования
+                                 ExtFile   //расширения файлов поиска
+                                 : string;
+                           const Day,      //число дней
+                                 DelDir    //признак удаления пустого каталога 0-оставить|1-удалить
+                                 : Integer   
+                          ): Integer;
+
+    //получить версию файла
+    function GetVersionFile(const FullNameFile: string): string;
+
+    //получить имя модуля файла
+    function GetNameModuleFile(const hModule: THandle): string;
+
+    //присвоение полей одного класса другому, однотипному
+    procedure Assign(Source: TSetProg);
+
+    //сравнение полей одного класса другому, однотипному
+    //Если OldPrm = NewOpm тогда FALSE, OldPrm <> NewOpm тогда TRUE
+    function ComparePrm(OldPrm: TSetProg): Boolean;
+
+    //проверка каталога на наличие и соответствие заданному
+    //если DirTmp = '' то проверяется только наличие каталога
+    function TestDirExist(FullDirName, DirTmp: string): Boolean;
+  end;
+
+
+implementation
+
+uses SysUtils, Windows, ResStr_ForClass, Classes;
+
+{ TSetProg }
+
+{+$WARN SYMBOL_DEPRECATED  }
+
+procedure TSetProg.Assign(Source: TSetProg);
+begin//присвоение полей одного класса другому, однотипному
+ if Source is TSetProg then
+   begin
+    APageIndex  := (Source as TSetProg).APageIndex; //активная закладка
+    LogLevel    := (Source as TSetProg).LogLevel;   //Уровень логирования сообщений
+    LogOnOff    := (Source as TSetProg).LogOnOff;   //протокол в файл вкл/выкл.
+    MnMzOnOff   := (Source as TSetProg).MnMzOnOff;  //признак минимизации в трэй
+    ShowErr     := (Source as TSetProg).ShowErr;    //Показывать ошибки Автоматически
+    AutoDelArh  := (Source as TSetProg).AutoDelArh; //включение автомат. удаление архивных файлов команд
+    AutoDelLog  := (Source as TSetProg).AutoDelLog; //включение автомат. удаление ЛОГ-файлы
+    RewriteLog  := (Source as TSetProg).RewriteLog; //Разрешить перезапись LOG-файла
+    AutoStartMon:= (Source as TSetProg).AutoStartMon;//Разрешить Автоматический запуск монитора каталога
+    DelayInp    := (Source as TSetProg).DelayInp;   //время задержки сканирования TSK_INP в [СЕК]
+    OldArhDay   := (Source as TSetProg).OldArhDay;  //хранить архивные файлы команд столько дней
+    OldLogDay   := (Source as TSetProg).OldLogDay;  //хранить ЛОГ-файлы столько дней
+    FileSizeMax := (Source as TSetProg).FileSizeMax;//МАХ размер файлов при операциях записи/копировании
+    DirProg     := (Source as TSetProg).DirProg;    //полное имя каталога программы
+    CommandDir  := (Source as TSetProg).CommandDir; //полное имя общего каталога для INPUT|WORK|OUT
+    DirInp      := (Source as TSetProg).DirInp;     //полное имя приемного каталога
+    DirWork     := (Source as TSetProg).DirWork;    //полное имя рабочего каталога
+    DirOut      := (Source as TSetProg).DirOut;     //полное имя выходного каталога
+    DirExprt    := (Source as TSetProg).DirExprt;   //полное имя каталога для экспорта
+    DirReport   := (Source as TSetProg).DirReport;  //полное имя каталога Report
+    DirArchivCmd:= (Source as TSetProg).DirArchivCmd;//полное имя каталога архива команд
+    DirExprtNet := (Source as TSetProg).DirExprtNet;//сетевое имя каталога экспорта
+    NameModul   := (Source as TSetProg).NameModul;  //полное имя загружаемого модуля
+    VersFile    := (Source as TSetProg).VersFile;   //версия файла
+    NameLog     := (Source as TSetProg).NameLog;    //полное имя ЛОГ-файла
+    NameReport  := (Source as TSetProg).NameReport; //полное имя файла ОТЧЕТА
+    AppFullName := (Source as TSetProg).AppFullName;//Полное Имя файла e:\...Viewer\Smes_XP.exe
+    AppWndCapt  := (Source as TSetProg).AppWndCapt; //Имя заголовка окна Smes_XP
+    AppProcName := (Source as TSetProg).AppProcName;//Имя процесса окна Smes_XP
+    AppAutoClose:= (Source as TSetProg).AppAutoClose;//Автоматически закрывать приложение, при выходе из основной программы
+    LstOnOff    := (Source as TSetProg).fLstOnOff;  //вывод листинга ИД в блокнот
+   end
+     else
+       Exception.Create(ErrClssCopy);
+end;
+
+function TSetProg.ComparePrm(OldPrm: TSetProg): Boolean;
+begin//сравнение полей одного класса другому, однотипному
+ if //(OldPrm.APageIndex   <> Self.APageIndex) or   //активная закладка
+    (OldPrm.LogLevel     <> Self.LogLevel)     or   //Уровень логирования сообщений
+    (OldPrm.LogOnOff     <> Self.LogOnOff)     or   //протокол в файл вкл/выкл.
+    (OldPrm.MnMzOnOff    <> Self.MnMzOnOff)    or   //признак минимизации в трэй
+    (OldPrm.ShowErr      <> Self.ShowErr)      or   //Показывать ошибки Автоматически
+    (OldPrm.AutoDelArh   <> Self.AutoDelArh)   or   //включение автомат. удаление архивных файлов команд
+    (OldPrm.AutoDelLog   <> Self.AutoDelLog)   or   //включение автомат. удаление ЛОГ-файлы
+    (OldPrm.RewriteLog   <> Self.RewriteLog)   or   //Разрешить перезапись LOG-файла
+    (OldPrm.AutoStartMon <> Self.AutoStartMon) or   //Разрешить Автоматический запуск монитора каталога
+    (OldPrm.DelayInp     <> Self.DelayInp)     or   //время задержки сканирования TSK_INP в [СЕК]
+    (OldPrm.OldArhDay    <> Self.OldArhDay)    or   //хранить архивные файлы команд столько дней
+    (OldPrm.OldLogDay    <> Self.OldLogDay)    or   //хранить ЛОГ-файлы столько дней
+    (OldPrm.FileSizeMax  <> Self.FileSizeMax)  or   //МАХ размер файлов при операциях записи/копировании
+    (OldPrm.DirProg      <> Self.DirProg)      or   //полное имя каталога программы
+    (OldPrm.CommandDir   <> Self.CommandDir)   or   //полное имя общего каталога для INPUT|WORK|OUT
+    (OldPrm.DirInp       <> Self.DirInp)       or   //полное имя приемного каталога
+    (OldPrm.DirWork      <> Self.DirWork)      or   //полное имя рабочего каталога
+    (OldPrm.DirOut       <> Self.DirOut)       or   //полное имя выходного каталога
+    (OldPrm.DirExprt     <> Self.DirExprt)     or   //полное имя каталога для экспорта
+    (OldPrm.DirArchivCmd <> Self.DirArchivCmd) or   //полное имя каталога архива команд
+    (OldPrm.DirReport    <> Self.DirReport)    or   //полное имя каталога Report
+    (OldPrm.DirExprtNet  <> Self.DirExprtNet)  or   //сетевое имя каталога экспорта
+    (OldPrm.NameModul    <> Self.NameModul)    or   //полное имя загружаемого модуля
+    (OldPrm.VersFile     <> Self.VersFile)     or   //версия файла
+    (OldPrm.NameLog      <> Self.NameLog)      or   //полное имя ЛОГ-файла
+    (OldPrm.NameReport   <> Self.NameReport)   or   //полное имя файла ОТЧЕТА
+    (OldPrm.AppFullName  <> Self.AppFullName)  or   //Полное Имя файла e:\...Viewer\Smes_XP.exe
+    (OldPrm.AppWndCapt   <> Self.AppWndCapt)   or   //Имя заголовка окна Smes_XP
+    (OldPrm.AppProcName  <> Self.AppProcName)  or   //Имя процесса окна Smes_XP
+    (OldPrm.AppAutoClose <> Self.AppAutoClose) or   //Автоматически закрывать приложение, при выходе из основной программы
+    (OldPrm.LstOnOff     <> Self.LstOnOff )         //вывод листинга ИД в блокнот
+    then    
+        Result:= True  //ИД изменились
+   else
+     Result:= False;  //ИД не изменились
+//Если OldPrm = NewPrm тогда FALSE, OldPrm <> NewPrm тогда TRUE
+end;
+
+function TSetProg.TestDirExist(FullDirName, DirTmp: string): Boolean;
+var
+   Tmp: string;
+begin//проверка каталога на наличие
+ Result:= False;//имя ресурса не допустимо, или его нет
+ FullDirName:= ExpandUNCFileName(ExcludeTrailingPathDelimiter //если надо, правим
+                         (FullDirName));//полный путь имени файла в формате UNC     
+  if (FullDirName <> '') and (not DirectoryExists(FullDirName)) then 
+    begin//каталога нет
+     Result:= False; 
+     Exit;
+    end;  
+ if DirTmp = '' then Exit;//каталог для сравнения не задан, выходим
+ Tmp:= ExtractFileName(FullDirName);//извлекаем имя общего ресурса
+ if (CompareText(Tmp, DirTmp) = 0) then
+   begin//имя ресурса допустимо 
+    if (not DirectoryExists(FullDirName)) then
+       Result:= False
+        else                  
+       Result:= True;//каталог есть
+   end
+     else                  
+        Result:= False;//имя ресурса не допустимо
+end;
+
+
+{+++++++++++ Работа с полями и значениями класса ++++++++++++++++++++++++++++++}
+
+constructor TSetProg.Create;
+begin//уставки по умолчанию
+ inherited;
+  fAPageIndex     := 0;     //активная закладка
+  fLogLevel       := 1;     //Уровень логирования сообщений
+  fLogOnOff       := True;  //протокол в файл вкл.
+  fMnMzOnOff      := False; //признак минимизации в трэй выкл.
+  fShowErr        := False; //Показывать ошибки Автоматически вкл.
+  fAutoDelArh     := True;  //включение автомат. удаление архивных файлов команд вкл.
+  fAutoDelLog     := False; //включение автомат. удаление ЛОГ-файлы вкл.
+  fRewriteLog     := False; //Разрешить перезапись сеанса
+  fAutoStartMon   := True;  //Разрешить Автоматический запуск монитора каталога
+  fDelayInp       := DefDelay;//время задержки сканирования TSK_INP в [СЕК]
+  fOldArhDay      := 90;    //хранить архивные файлы команд столько дней
+  fOldLogDay      := 90;    //хранить ЛОГ-файлы столько дней
+  fSizeMax        := MaxFileSize;//МАХ размер файлов при операциях записи/копировании
+  fDirProg        := ExtractFileDir(GetModuleName(HInstance));  //полное имя каталога программы
+  fCommandDir     := '';   //полное имя общего каталога для INPUT|WORK|OUT
+  fDirInp         := '';   //полное имя приемного каталога
+  fDirWork        := '';   //полное имя рабочего каталога
+  fDirOut         := '';   //полное имя выходного каталога
+  fDirExprt       := '';   //полное имя каталога для экспорта
+  fDirArchivCmd   := '';   //полное имя каталога архива команд
+  fDirReport      := '';   //полное имя каталога Report
+  fDirExprtNet    := '';   //полное имя сетевого каталога экспорта
+  fNameModul      := '';   //имя загружаемой *.Dll или *.EXE
+  fVersion        := '';   //версия *.Dll или *.EXE
+  fNameFileLog    := '';   //полное имя ЛОГ-файла
+  fNameFileReport := '';   //полное имя файла ОТЧЕТА
+  fAppFullName    := '';   //Полное Имя файла e:\...Viewer\Smes_XP.exe
+  fAppWndCapt     := AppSmess;//Имя заголовка окна Smes_XP
+  fAppAutoClose   := False;//Автоматически закрывать приложение, при выходе из основной программы
+  fLstOnOff       := False;//вывод листинга ИД в блокнот
+end;
+
+destructor TSetProg.Destroy;
+begin
+ inherited;
+end;
+
+function TSetProg.Get_AutoStartMon: Boolean;
+begin
+ Result:= fAutoStartMon;
+end;
+
+function TSetProg.Get_APageIndex: Integer;
+begin
+ Result:= fAPageIndex;
+end;
+
+function TSetProg.Get_AutoDelArh: Boolean;
+begin
+ Result:= fAutoDelArh;
+end;
+
+function TSetProg.Get_AutoDelLog: Boolean;
+begin
+ Result:= fAutoDelLog;
+end;
+
+function TSetProg.Get_ShowErr: Boolean;
+begin
+ Result:= fShowErr;
+end;
+
+function TSetProg.Get_AppWndCapt: string;
+begin
+ Result:= AnsiUpperCase(Trim(fAppWndCapt));
+end;
+
+function TSetProg.Get_AppAutoClose: Boolean;
+begin
+ Result:= fAppAutoClose;
+end;
+
+function TSetProg.Get_AppFullName: string;
+begin
+ Result:= AnsiUpperCase(Trim(fAppFullName));
+end;
+
+function TSetProg.Get_AppProcName: string;
+begin
+ Result:= AnsiUpperCase(Trim(fAppProcName));
+end;
+
+function TSetProg.Get_CommandDir: string;
+begin
+ Result:= ExcludeTrailingPathDelimiter(Trim(fCommandDir));
+end;
+
+function TSetProg.Get_DelayInp: Integer;
+begin
+ if  fDelayInp <= 0 then  Result:= DefDelay
+   else
+ if  fDelayInp > MaxDelay then  Result:= MaxDelay
+   else
+ Result:= fDelayInp;
+end;
+
+function TSetProg.Get_DirArchivCmd: string;
+begin
+ Result:= ExcludeTrailingPathDelimiter(Trim(fDirArchivCmd));
+end;
+
+function TSetProg.Get_DirExprt: string;
+begin
+ Result:= ExcludeTrailingPathDelimiter(Trim(fDirExprt));
+end;
+
+function TSetProg.Get_DirExprtNet: string;
+begin
+ Result:= AnsiUpperCase(ExcludeTrailingPathDelimiter(Trim(fDirExprtNet)));
+end;
+
+function TSetProg.Get_DirInp: string;
+begin
+ Result:= ExcludeTrailingPathDelimiter(Trim(fDirInp));
+end;
+
+function TSetProg.Get_DirOut: string;
+begin
+ Result:= ExcludeTrailingPathDelimiter(Trim(fDirOut));
+end;
+
+function TSetProg.Get_DirProg: string;
+begin
+ Result:= ExcludeTrailingPathDelimiter(Trim(fDirProg));
+end;
+
+function TSetProg.Get_DirReport: string;
+begin
+ Result:= ExcludeTrailingPathDelimiter(Trim(fDirReport));
+end;
+
+function TSetProg.Get_DirWork: string;
+begin
+ Result:= ExcludeTrailingPathDelimiter(Trim(fDirWork));
+end;
+
+function TSetProg.Get_FileSizeMax: Integer;
+begin
+ Result:= fSizeMax;
+end;
+
+function TSetProg.Get_LogLevel: Integer;
+begin
+ if  fLogLevel <= 0 then Result:= 1
+   else
+ if  fLogLevel >= MAX_LogLevel then Result:= MAX_LogLevel
+   else
+     Result:= fLogLevel; 
+end;
+
+function TSetProg.Get_LogOnOff: Boolean;
+begin
+ Result:= fLogOnOff;
+end;
+
+function TSetProg.Get_MnMzOnOff: Boolean;
+begin
+ Result:= fMnMzOnOff;
+end;
+
+function TSetProg.Get_NameReport: string;
+begin
+ Result:= Trim(fNameFileReport);
+end;
+
+function TSetProg.Get_NameLog: string;
+begin
+ Result:= Trim(fNameFileLog);
+end;
+
+function TSetProg.Get_NameModul: string;
+begin
+ Result:= Trim(fNameModul);
+end;
+
+function TSetProg.Get_OldArhDay: Integer;
+begin
+ Result:= fOldArhDay;
+end;
+
+function TSetProg.Get_OldLogDay: Integer;
+begin
+ Result:= fOldLogDay;
+end;
+
+function TSetProg.Get_RewriteLog: Boolean;
+begin
+ Result:= fRewriteLog;
+end;
+
+function TSetProg.Get_Version: string;
+begin
+ Result:= Trim(fVersion);
+end;
+
+function TSetProg.Get_LstOnOff: Boolean;
+begin
+ Result:= fLstOnOff;
+end;
+
+function TSetProg.LoadFromIniFile(const fIniName: string): TSetProg;
+var
+   fIni: TIniFile;
+   Sctn: string;//имя секции INI-файла = имени класса
+begin//читаем настройки программы из Ini-файла
+ Result:= nil;
+ fIni:= TIniFile.Create(fIniName);
+ //имя секции INI-файла = имени класса
+ Sctn:= TSetProg.ClassName;//секция  INI-файла
+ with Self do
+ try
+   try
+    Set_APageIndex  (fIni.ReadInteger(Sctn, 'ActivePageIndex', 0));    //активная закладка
+    Set_LogLevel    (fIni.ReadInteger(Sctn, 'LogLevel'       , fLogLevel));//Уровень логирования сообщений
+    Set_LogOnOff    (fIni.ReadBool   (Sctn, 'Log_OnOff'      , fLogOnOff)); //протокол в файл вкл/выкл.
+    Set_MnMzOnOff   (fIni.ReadBool   (Sctn, 'MiniMize_OnOff' , fMnMzOnOff)); //признак минимизации в трэй
+    Set_ShowErr     (fIni.ReadBool   (Sctn, 'ShowErr'        , fShowErr)); //Показывать ошибки Автоматически
+    Set_AutoDelArh  (fIni.ReadBool   (Sctn, 'AutoDelArh'     , fAutoDelArh)); //включение автомат. удаление Архивных файлов команд
+    Set_AutoDelLog  (fIni.ReadBool   (Sctn, 'AutoDelLog'     , fAutoDelLog)); //включение автомат. удаление ЛОГ-файлы
+    Set_RewriteLog  (fIni.ReadBool   (Sctn, 'RewriteLog'     , fRewriteLog));//Разрешить перезапись LOG-файла
+    Set_AutoStartMon(fIni.ReadBool   (Sctn, 'AutoStartMon'   , fAutoStartMon));//Разрешить автоматически старт монитора
+    Set_DelayInp    (fIni.ReadInteger(Sctn, 'DelayInp'       , fDelayInp));    //время задержки сканирования TSK_INP в [СЕК]
+    Set_OldArhDay   (fIni.ReadInteger(Sctn, 'OldArhDay'      , fOldArhDay));   //хранить архивные файлы команд столько дней
+    Set_OldLogDay   (fIni.ReadInteger(Sctn, 'OldLogDay'      , fOldLogDay));   //хранить ЛОГ-файлы столько дней
+    Set_FileSizeMax (fIni.ReadInteger(Sctn, 'FileSizeMax'    , fSizeMax));//Задать МАХ размер файлов при операциях записи/копировании
+    Set_DirProg     (fIni.ReadString (Sctn, 'DirProg'        , ''));  //полное имя каталога программы
+    Set_CommandDir  (fIni.ReadString (Sctn, 'CommandDir'     , ''));  //полное имя общего каталога для INPUT|WORK|OUT
+    Set_DirInp      (fIni.ReadString (Sctn, 'DirInp'         , ''));  //полное имя приемного каталога
+    Set_DirWork     (fIni.ReadString (Sctn, 'DirWork'        , ''));  //полное имя рабочего каталога
+    Set_DirOut      (fIni.ReadString (Sctn, 'DirOut'         , ''));  //полное имя выходного каталога
+    Set_DirExprt    (fIni.ReadString (Sctn, 'DirExprt'       , ''));  //полное имя каталога для экспорта
+    Set_DirArchivCmd(fIni.ReadString (Sctn, 'DirArhivCmd'    , ''));  //полное имя каталога архива команд
+    Set_DirReport   (fIni.ReadString (Sctn, 'DirReport'      , ''));  //полное имя каталога Report
+    Set_DirExprtNet (fIni.ReadString (Sctn, 'DirExprtNet'    , ''));  //сетевое имя каталога экспорта
+    Set_NameModul   (fIni.ReadString (Sctn, 'NameModule'     , ''));  //полное имя загружаемого модуля
+    Set_Version     (fIni.ReadString (Sctn, 'Version_File'   , ''));  //версия файла
+    Set_NameLog     (fIni.ReadString (Sctn, 'NameLog'        , ''));   //полное имя ЛОГ-файла
+    Set_NameReport  (fIni.ReadString (Sctn, 'NameReport'     , ''));   //полное имя файла ОТЧЕТА
+    Set_AppFullName (fIni.ReadString (Sctn, 'AppFullName'    , ''));   //Полное Имя файла e:\...Viewer\Smes_XP.exe
+    Set_AppWndCapt  (fIni.ReadString (Sctn, 'AppWndCapt'     , ''));   //Имя заголовка окна Smes_XP (SMES-XP V.3.5)
+    Set_AppProcName (fIni.ReadString (Sctn, 'AppProcName'    , fAppProcName)); //Имя процесса окна Smes_XP
+    Set_AppAutoClose(fIni.ReadBool   (Sctn, 'AppAutoClose'   , fAppAutoClose));//Автоматически закрывать приложение, при выходе из основной программы
+    Set_LstOnOff    (fIni.ReadBool   (Sctn, 'LstOnOff'       , fLstOnOff));//вывод листинга ИД в блокнот
+    Result:= Self;
+   except
+    raise //генерируем свое исключение
+     Exception.Create(Format(ErrClssRead, [Sctn, fIni.FileName]));
+   end;
+ finally
+  FreeAndNil(fIni);
+ end;
+end;
+
+
+function TSetProg.SaveInIniFile(const fIniName: string): Boolean;
+var
+   fIni: TIniFile;
+   Sctn: string;//имя секции INI-файла = имени класса
+begin//сохранение настроек программы в Ini-файл
+ Result:= False;
+ fIni:= TIniFile.Create(fIniName);
+ //имя секции INI-файла = имени класса
+ Sctn:= Self.ClassName;//секция  INI-файла  
+ try
+   try
+   with Self do
+    begin
+     fIni.WriteInteger(Sctn, 'ActivePageIndex',  fAPageIndex); //активная закладка
+     fIni.WriteInteger(Sctn, 'LogLevel',         fLogLevel);   //Уровень логирования сообщений
+     fIni.WriteBool   (Sctn, 'Log_OnOff',        fLogOnOff);   //протокол в файл вкл/выкл.
+     fIni.WriteBool   (Sctn, 'MiniMize_OnOff',   fMnMzOnOff);  //признак минимизации в трэй
+     fIni.WriteBool   (Sctn, 'ShowErr',          fShowErr);    //Показывать ошибки Автоматически
+     fIni.WriteBool   (Sctn, 'AutoDelArh',       fAutoDelArh); //включение автомат. удаление архивных файлов команд
+     fIni.WriteBool   (Sctn, 'AutoDelLog',       fAutoDelLog); //включение автомат. удаление ЛОГ-файлы
+     fIni.WriteBool   (Sctn, 'RewriteLog',       fRewriteLog); //Разрешить перезапись LOG-файла
+     fIni.WriteBool   (Sctn, 'AutoStartMon',     fAutoStartMon);//Разрешить Автоматический запуск монитора каталога
+     fIni.WriteInteger(Sctn, 'DelayInp',         fDelayInp);   //время задержки сканирования TSK_INP в [СЕК]  
+     fIni.WriteInteger(Sctn, 'OldArhDay',        fOldArhDay);  //хранить архивные файлы команд столько дней
+     fIni.WriteInteger(Sctn, 'OldLogDay',        fOldLogDay);  //хранить ЛОГ-файлы столько дней
+     fIni.WriteInteger(Sctn, 'FileSizeMax',      fSizeMax);//Задать МАХ размер файлов при операциях записи/копировании
+     fIni.WriteString (Sctn, 'DirProg',          fDirProg);    //полное имя каталога программы
+     fIni.WriteString (Sctn, 'CommandDir',       fCommandDir);  //полное имя общего каталога для INPUT|WORK|OUT
+     fIni.WriteString (Sctn, 'DirInp',           fDirInp);     //полное имя приемного каталога
+     fIni.WriteString (Sctn, 'DirWork',          fDirWork);    //полное имя рабочего каталога
+     fIni.WriteString (Sctn, 'DirOut',           fDirOut);     //полное имя выходного каталога
+     fIni.WriteString (Sctn, 'DirExprt',         fDirExprt);   //полное имя каталога для экспорта
+     fIni.WriteString (Sctn, 'DirArchivCmd',     fDirArchivCmd);//полное имя каталога для экспорта
+     fIni.WriteString (Sctn, 'DirReport',        fDirReport);  //полное имя каталога Report
+     fIni.WriteString (Sctn, 'DirExprtNet',      fDirExprtNet);//сетевое имя каталога экспорта
+     fIni.WriteString (Sctn, 'NameModule',       fNameModul);  //полное имя загружаемого модуля
+     fIni.WriteString (Sctn, 'Version_File',     fVersion);   //версия файла
+     fIni.WriteString (Sctn, 'NameLog',          fNameFileLog);    //полное имя ЛОГ-файла
+     fIni.WriteString (Sctn, 'NameReport',       fNameFileReport); //полное имя файла ОТЧЕТА
+     fIni.WriteString (Sctn, 'AppFullName',      fAppFullName);//Полное Имя файла e:\...Viewer\Smes_XP.exe
+     fIni.WriteString (Sctn, 'AppWndCapt',       fAppWndCapt); //Имя заголовка окна Smes_XP (SMES-XP V.3.5)
+     fIni.WriteString (Sctn, 'AppProcName',      fAppProcName);//Имя процесса окна Smes_XP
+     fIni.WriteBool   (Sctn, 'AppAutoClose',     fAppAutoClose);//Автоматически закрывать приложение, при выходе из основной программы
+     fIni.WriteBool   (Sctn, 'LstOnOff',         fLstOnOff);   //вывод листинга ИД в блокнот
+    Result:= True;
+    end;
+   except
+    raise //генерируем свое исключение
+     Exception.Create(Format(ErrClssSave, [Sctn, fIni.FileName]));
+   end;
+ finally
+  FreeAndNil(fIni);
+ end;
+end;
+
+{+++++++++++ Установка значений полей класса +++++++++++++++++++}
+
+procedure TSetProg.Set_AutoStartMon(Value: Boolean);
+begin
+ fAutoStartMon:= Value;
+end;
+
+procedure TSetProg.Set_APageIndex(Value: Integer);
+begin
+ fAPageIndex:= Value;
+end;
+
+procedure TSetProg.Set_AutoDelArh(Value: Boolean);
+begin
+ fAutoDelArh:= Value;
+end;
+
+procedure TSetProg.Set_AutoDelLog(Value: Boolean);
+begin
+ fAutoDelLog:= Value;
+end;
+
+procedure TSetProg.Set_ShowErr(Value: Boolean);
+begin
+ fShowErr:= Value;
+end;
+
+procedure TSetProg.Set_AppWndCapt(Value: string);
+begin
+ fAppWndCapt:= AnsiUpperCase(Trim(Value));
+end;
+
+procedure TSetProg.Set_AppAutoClose(Value: Boolean);
+begin
+ fAppAutoClose:= Value;
+end;
+
+procedure TSetProg.Set_AppFullName(Value: string);
+begin
+ fAppFullName:= AnsiUpperCase(Trim(Value));
+end;
+
+procedure TSetProg.Set_AppProcName(Value: string);
+begin
+ fAppProcName:= AnsiUpperCase(Trim(Value));
+end;
+
+procedure TSetProg.Set_CommandDir(Value: string);
+begin
+ fCommandDir:= ExcludeTrailingPathDelimiter(Trim(Value));
+end;
+
+procedure TSetProg.Set_DelayInp(Value: Integer);
+begin
+ if  Value <= 0 then  fDelayInp:= DefDelay
+     else
+ if  DelayInp > MaxDelay then fDelayInp:= MaxDelay
+     else
+ fDelayInp:= Value;
+end;
+
+procedure TSetProg.Set_DirArchivCmd(Value: string);
+begin
+ fDirArchivCmd:= ExcludeTrailingPathDelimiter(Trim(Value));
+end;
+
+procedure TSetProg.Set_DirExprt(Value: string);
+begin
+ fDirExprt:= ExcludeTrailingPathDelimiter(Trim(Value));
+end;
+
+procedure TSetProg.Set_DirExprtNet(Value: string);
+begin
+ fDirExprtNet:= AnsiUpperCase(ExcludeTrailingPathDelimiter(Trim(Value)));
+end;
+
+procedure TSetProg.Set_DirInp(Value: string);
+begin
+ fDirInp:= ExcludeTrailingPathDelimiter(Trim(Value));
+end;
+
+procedure TSetProg.Set_DirOut(Value: string);
+begin
+ fDirOut:= ExcludeTrailingPathDelimiter(Trim(Value));
+end;
+
+procedure TSetProg.Set_DirProg(Value: string);
+begin
+ fDirProg:= ExcludeTrailingPathDelimiter(Trim(Value));
+end;
+
+procedure TSetProg.Set_DirReport(Value: string);
+begin
+ fDirReport:= ExcludeTrailingPathDelimiter(Trim(Value));
+end;
+
+procedure TSetProg.Set_DirWork(Value: string);
+begin
+ fDirWork:= ExcludeTrailingPathDelimiter(Trim(Value));
+end;
+
+procedure TSetProg.Set_FileSizeMax(Value: Integer);
+begin
+ fSizeMax:= Value;
+end;
+
+procedure TSetProg.Set_LogLevel(Value: Integer);
+begin
+ if  (Value <= 0) then  Value := 1
+   else
+  if  (Value >= MAX_LogLevel) then Value := MAX_LogLevel;
+ fLogLevel:= Value; 
+end;
+
+procedure TSetProg.Set_LogOnOff(Value: Boolean);
+begin
+ fLogOnOff:= Value;
+end;
+
+procedure TSetProg.Set_MnMzOnOff(Value: Boolean);
+begin
+ fMnMzOnOff:= Value;
+end;
+
+procedure TSetProg.Set_NameReport(Value: string);
+begin
+ fNameFileReport:= Trim(Value);
+end;
+
+procedure TSetProg.Set_NameLog(Value: string);
+begin
+ fNameFileLog:= Trim(Value);
+end;
+
+procedure TSetProg.Set_NameModul(Value: string);
+begin
+ fNameModul:= Trim(Value);
+end;
+
+procedure TSetProg.Set_OldArhDay(Value: Integer);
+begin
+ fOldArhDay:= Value;
+end;
+
+procedure TSetProg.Set_OldLogDay(Value: Integer);
+begin
+ fOldLogDay:= Value;
+end;
+
+procedure TSetProg.Set_RewriteLog(Value: Boolean);
+begin
+ fRewriteLog:= Value;
+end;
+
+procedure TSetProg.Set_Version(Value: string);
+begin
+ fVersion:= Trim(Value);
+end;
+
+procedure TSetProg.Set_LstOnOff(Value: Boolean);
+begin
+ fLstOnOff:= Value;
+end;
+
+//function TSetProg.DeleteOldFile(const PathScan, //каталог сканирования
+//                                      ExtFile   //расширения файлов поиска
+//                                      : string;
+//                                const Day,      //число дней
+//                                      DelDir    //признак удаления пустого каталога 0-оставить|1-удалить
+//                                      : Integer   
+//                                ): Integer;
+//var
+//   DirInfo: TSearchRec;
+//   Find, Count : Integer;
+//begin//удаление старых файлов
+// Result:= 0;
+// if Day <= 0 then Exit;//не удалять
+// Count:= Result;
+// Find := FindFirst(PathScan + '*.' + ExtFile, FaAnyfile, DirInfo);//найден первый
+// while Find = 0 do
+//  begin
+//   if ((DirInfo.Attr and faDirectory <> faDirectory) and
+//        (DirInfo.Attr and faVolumeID <> faVolumeID) and
+//          (FileDateToDateTime(DirInfo.Time) < Date - Day)) then
+//   try
+//    if DeleteFile(PChar(PathScan + DirInfo.Name))<> False then
+//      begin
+//       Inc(Count);
+//       if (DelDir > 0)  then  //если 0-оставить|1-удалить
+//         RemoveDir(PathScan); //то удалить пустой
+//      end;  
+//   except
+//    Break;
+//   end;
+//   Find := FindNext(DirInfo);
+//  end;
+// Result:= Count;//Удалено старых ЛОГ-файлов
+// SysUtils.FindClose(DirInfo);
+//end;
+
+function Recursiv(PathScan, fExt: string; Day, DelDir: Integer; var Lst: TStringList): Integer;
+Var
+   SR : TSearchRec;
+begin
+ try
+  PathScan:= IncludeTrailingPathDelimiter(PathScan);
+  if FindFirst(PathScan + '*.*', faAnyFile, SR) = 0 then //поиск первого файла
+    repeat  //цикл поиска файлов
+      if (SR.Attr and faDirectory) = faDirectory  then
+       begin //we found Directory: "PathFile + SRec.name"
+        if (SR.Name <> '.') and (SR.Name <> '..') then
+          begin//найден каталог
+           Recursiv(PathScan + SR.Name, fExt, Day, DelDir, Lst);//переводим поиск в найденый каталог
+          end
+       end
+      else
+     if (AnsiPos(AnsiUpperCase(fExt), AnsiUpperCase(SR.Name)) >0 ) or (fExt = '*') then
+       begin//найден файл- заполнить строковую структуру инфы о файле
+   if ((SR.Attr and faDirectory <> faDirectory) and
+        (SR.Attr and faVolumeID <> faVolumeID) and
+          (FileDateToDateTime(SR.Time) < Date - Day)) then
+        try
+         Lst.Add(PathScan + SR.Name); //запомнить полный путь к файлу
+         if DeleteFile(PChar(PathScan + SR.Name))<> False then
+           begin
+            if (DelDir > 0)  then  //если 0-оставить|1-удалить
+            RemoveDir(PathScan); //то удалить пустой
+            end;  
+        except
+         Break;
+        end;
+       end;
+    until FindNext(SR) <> 0;//поиск следующих файлов
+  SysUtils.FindClose(SR);
+  Result:= Lst.Count;
+ except //обработка исключения
+  on EListError: Exception do 
+    begin
+     Result:= 0;
+     Exception.Create('function FindFilesLst из OperSearch.DLL потерпела неудачу!');
+    end;
+ end;
+end;
+
+function TSetProg.DeleteOldFile(const PathScan, //каталог сканирования
+                                      ExtFile   //расширения файлов поиска
+                                      : string;
+                                const Day,      //число дней
+                                      DelDir    //признак удаления пустого каталога 0-оставить|1-удалить
+                                      : Integer   
+                                ): Integer;
+Var
+   PathFile: string;//путь к файлу и имя файла
+   sLst: TStrings;
+begin// искать файлы *.*** в заданном каталоге и подкаталогах
+ sLst:= TStringList.Create;
+ try
+  PathFile:= IncludeTrailingPathDelimiter(PathScan);//если нет то добавить
+  Recursiv(PathFile, ExtFile, Day, DelDir, TStringList(sLst));
+  Result:= sLst.Count;
+ finally
+  FreeAndNil(sLst);
+ end;
+end;
+
+
+function TSetProg.GetVersionFile(const FullNameFile: string): string;
+resourcestring
+   ErrVersFile1= 'Не могу прочитать версию файла: ';
+   ErrVersFile2= 'Версия файла или отсутствует или повреждена';
+   FrmtVersFile= '%2d.%2d.%2d.%2d';
+var
+   Info: Pointer;
+   InfoSize: DWORD;
+   FileInfo: PVSFixedFileInfo;
+   FileInfoSize: DWORD;
+   Tmp: DWORD;
+begin//получить версию файла  FullNameFile= полное имя файла
+ // Get the size of the FileVersionInformatioin
+ InfoSize := GetFileVersionInfoSize(PChar(FullNameFile), Tmp);
+ // If InfoSize = 0, then the file may not exist, or
+ // it may not have file version information in it.
+ if InfoSize = 0 then
+   begin
+    Result:= ( ErrVersFile1+ FullNameFile +'.'#10#13 + ErrVersFile2);
+//    raise Exception.Create( ErrVersFile1+ FullNameFile +'.'#10#13 + ErrVersFile2);
+
+   end
+     else
+       begin
+         GetMem(Info, InfoSize);
+         try
+           // Get the information
+          GetFileVersionInfo(PChar(FullNameFile), 0, InfoSize, Info);
+           // Query the information for the version
+          VerQueryValue(Info, '\', Pointer(FileInfo), FileInfoSize);
+           // Now fill in the version information
+          Result := PChar(Format(FrmtVersFile,[ FileInfo.dwFileVersionMS shr 16,
+                                                FileInfo.dwFileVersionMS and $FFFF,
+                                                FileInfo.dwFileVersionLS shr 16,
+                                                FileInfo.dwFileVersionLS and $FFFF]));
+         finally
+          FreeMem(Info, FileInfoSize);
+         end;
+       end;
+ // Allocate memory for the file version information
+end;
+
+
+function TSetProg.GetNameModuleFile(const hModule: THandle): string;
+begin//получить имя модуля файла
+ Result:= ExtractFileName(GetModuleName(hModule)); 
+end;
+
+end.
+

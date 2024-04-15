@@ -1,0 +1,31 @@
+unit ResStr_ForClass;
+
+interface
+
+uses
+  Controls;
+
+resourcestring
+
+ ErrCreatClass= 'Ошибка создания класса!';
+ ErrClssRead  = 'Ошибка чтения %s! Проверьте INI-файл < %s > !';
+ ErrClssSave  = 'Ошибка записи %s! Проверьте INI-файл < %s > !';
+ ErrClssCopy  = 'Ошибка копирования класса в копию класса!';
+ ErrClssField = 'Ошибка записи/чтения поля класса < %s >!';
+ ErrClssFill  = 'Ошибка заполнения полей класса!';
+ 
+ sNo          = 'НЕТ';
+
+const 
+     DateStart: TDate = 36892;//стартовый год - 01.01.2001
+     DtBgn    : TDate = 0;    //Дата по умолчанию
+     TmBgn    : TTime = 0;      //Время по умолчанию
+
+const
+     ShortDate = 'dd.mm.yy';
+     LongDate  = 'dd.mm.yyyy';
+     ShortTime = 'hh:nn:ss';
+
+implementation
+
+end.
